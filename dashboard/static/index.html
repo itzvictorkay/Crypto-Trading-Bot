@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoBot Pro Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-primary: #38bdf8;/* Sky 400 */
+            --accent-secondary: #818cf8;/* Indigo 400 */
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(129, 140, 248, 0.15) 0%, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1rem;
+            backdrop-filter: blur(100px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-running { color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+        .status-paused { color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+        .status-stopped { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary { background: var(--accent-primary); color: #000; }
+        .btn-primary:hover { background: #7dd3fc; }
+
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .btn-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th {
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.8125rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        td {
+            padding: 1rem 0;
+            font-size: 0.875rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pnl-pos { color: var(--success); }
+        .pnl-neg { color: var(--danger); }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent-primary); }
+
+        .symbol-tag {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .symbol-remove {
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .symbol-remove:hover { color: var(--danger); }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i data-lucide="zap"></i>
+                CryptoBot Pro
+            </div>
+            <div id="status-badge" class="status-badge">
+                <span id="status-dot"></span>
+                <span id="status-text">INITIALIZING...</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Balance Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i data-lucide="wallet"></i> Wallet Balance</div>
+                </div>
+                <div class="stat-value" id="total-balance">$0.00</div>
+                <div class="stat-label" id="free-balance">Free: $0.00 USDT</div>
+            </div>
+
+            <!-- Controls Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i data-lucide="command"></i> Bot Controls</div>
+                </div>
+                <div class="btn-group">
+                    <button id="btn-pause" class="btn-secondary" onclick="sendCommand('pause')">
+                        <i data-lucide="pause"></i> Pause
+                    </button>
+                    <button id="btn-resume" class="btn-secondary" style="display:none" onclick="sendCommand('resume')">
+                        <i data-lucide="play"></i> Resume
+                    </button>
+                    <button id="btn-stop" class="btn-danger" onclick="sendCommand('stop')">
+                        <i data-lucide="square"></i> Stop Bot
+                    </button>
+                </div>
+                <div class="stat-label" style="margin-top: 1rem;">
+                    Stop will terminate the process.
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Pairs Management -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i data-lucide="layers"></i> Active Pairs</div>
+                </div>
+                <div id="symbols-list">
+                    <!-- Symbols injected here -->
+                </div>
+                <div class="input-group">
+                    <input type="text" id="new-symbol" placeholder="BTC/USDT">
+                    <button class="btn-primary" onclick="addSymbol()">Add</button>
+                </div>
+            </div>
+
+            <!-- Trade History -->
+            <div class="card" style="grid-column: span 1;">
+                <div class="card-header">
+                    <div class="card-title"><i data-lucide="history"></i> Recent Trades</div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Price</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-body">
+                            <!-- Trades injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use relative paths for API calls
+        const API_BASE = '/api';
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/status`);
+                if (res.status === 401) {
+                    alert("Unauthorized. Please refresh and enter correct password.");
+                    return;
+                }
+                const data = await res.json();
+                updateUI(data);
+            } catch (err) {
+                console.error("Status fetch failed", err);
+            }
+        }
+
+        async function fetchTrades() {
+            try {
+                const res = await fetch(`${API_BASE}/trades`);
+                const data = await res.json();
+                updateTradesUI(data);
+            } catch (err) {}
+        }
+
+        async function fetchSymbols() {
+            try {
+                const res = await fetch(`${API_BASE}/symbols`);
+                const data = await res.json();
+                updateSymbolsUI(data);
+            } catch (err) {}
+        }
+
+        function updateUI(data) {
+            const statusBadge = document.getElementById('status-badge');
+            const statusText = document.getElementById('status-text');
+            const btnPause = document.getElementById('btn-pause');
+            const btnResume = document.getElementById('btn-resume');
+
+            statusText.innerText = data.status || 'OFFLINE';
+            statusBadge.className = 'status-badge status-' + (data.status || 'STOPPED').toLowerCase();
+            
+            if (data.status === 'PAUSED') {
+                btnPause.style.display = 'none';
+                btnResume.style.display = 'flex';
+            } else {
+                btnPause.style.display = 'flex';
+                btnResume.style.display = 'none';
+            }
+
+            if (data.balance) {
+                document.getElementById('total-balance').innerText = '$' + (parseFloat(data.balance.total_usdt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('free-balance').innerText = 'Free: $' + (parseFloat(data.balance.free_usdt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2}) + ' USDT';
+            }
+        }
+
+        function updateTradesUI(trades) {
+            const body = document.getElementById('trades-body');
+            body.innerHTML = trades.map(t => `
+                <tr>
+                    <td><b>${t.symbol}</b></td>
+                    <td style="color: ${t.side === 'BUY' ? 'var(--accent-primary)' : 'var(--accent-secondary)'}">${t.side}</td>
+                    <td>$${t.price.toLocaleString()}</td>
+                    <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateSymbolsUI(symbols) {
+            const list = document.getElementById('symbols-list');
+            list.innerHTML = symbols.map(s => `
+                <div class="symbol-tag">
+                    ${s}
+                    <i data-lucide="x" class="symbol-remove" onclick="removeSymbol('${s}')"></i>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function sendCommand(command) {
+            if (command === 'stop' && !confirm("Are you sure you want to KILL the bot process?")) return;
+            await fetch(`${API_BASE}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+            fetchStatus();
+        }
+
+        async function addSymbol() {
+            const input = document.getElementById('new-symbol');
+            const symbol = input.value.trim().toUpperCase();
+            if (!symbol) return;
+            await fetch(`${API_BASE}/symbols`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol })
+            });
+            input.value = '';
+            fetchSymbols();
+        }
+
+        async function removeSymbol(symbol) {
+            await fetch(`${API_BASE}/symbols/${encodeURIComponent(symbol)}`, {
+                method: 'DELETE'
+            });
+            fetchSymbols();
+        }
+
+        // Init
+        lucide.createIcons();
+        fetchStatus();
+        fetchTrades();
+        fetchSymbols();
+
+        // Polling
+        setInterval(fetchStatus, 5000);
+        setInterval(fetchTrades, 30000);
+        setInterval(fetchSymbols, 60000);
+    </script>
+</body>
+</html>

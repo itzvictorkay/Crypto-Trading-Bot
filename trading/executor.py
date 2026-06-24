@@ -6,6 +6,7 @@ Supports market orders, stop-loss, and take-profit.
 """
 
 import logging
+from dashboard.shared_db import DashboardDB
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ class OrderExecutor:
     def __init__(self, exchange, config):
         self.exchange = exchange
         self.config = config
+        self.db = DashboardDB()
 
     def execute_trade(self, symbol: str, signal: str, amount: float, sl_price: float, tp_price: float):
         """Place a market order with stop-loss and take-profit."""
@@ -29,6 +31,12 @@ class OrderExecutor:
                 amount=amount
             )
             logger.info(f"✅ Main order placed: {order['id']}")
+
+            # Log to DB
+            try:
+                self.db.log_trade(symbol, side.upper(), order.get('price', 0), amount)
+            except Exception as e:
+                logger.error(f"Failed to log trade to DB: {e}")
 
             # Stop-loss
             try:

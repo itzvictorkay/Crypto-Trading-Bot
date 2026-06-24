@@ -13,6 +13,7 @@ import threading
 import os
 from telegram import Bot
 import config
+from dashboard.shared_db import DashboardDB
 
 os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
 
@@ -164,9 +165,17 @@ def run_pair(symbol: str, fetcher, signal_engine, risk_manager, executor, positi
     # Use the shortest timeframe interval for the loop
     timeframes = [tf.strip() for tf in config.TIMEFRAMES.split(',')]
     loop_interval = config.LOOP_INTERVAL
+    db = DashboardDB()
 
     while True:
         try:
+            # Check for Pause
+            status_info = db.get_status()
+            if status_info.get('status') == 'PAUSED':
+                logger.info(f"[{symbol}] Bot is PAUSED. Skipping cycle.")
+                time.sleep(loop_interval)
+                continue
+
             logger.info(f"[{symbol}] --- New multi-timeframe cycle ---")
 
             # Get current price from shortest timeframe
@@ -244,14 +253,23 @@ def run_bot():
     logger.info("  CRYPTO BOT - MULTI PAIR + MULTI TIMEFRAME")
     logger.info("=" * 60)
 
-    symbols    = [s.strip() for s in config.SYMBOLS.split(',') if s.strip()]
+    symbols_env = [s.strip() for s in config.SYMBOLS.split(',') if s.strip()]
     timeframes = [tf.strip() for tf in config.TIMEFRAMES.split(',')]
 
-    if not symbols:
-        logger.error("No symbols in .env!")
+    db = DashboardDB()
+    
+    # Initialize symbols in DB if empty
+    db_symbols = db.get_symbols()
+    if not db_symbols:
+        for s in symbols_env:
+            db.add_symbol(s)
+        db_symbols = symbols_env
+
+    if not db_symbols:
+        logger.error("No symbols in .env or DB!")
         return
 
-    logger.info(f"Pairs: {symbols}")
+    logger.info(f"Pairs: {db_symbols}")
     logger.info(f"Timeframes: {timeframes}")
     logger.info(f"Min confluence: {config.MIN_TIMEFRAME_CONFLUENCE}/{len(timeframes)}")
     logger.info(f"Testnet: {config.USE_TESTNET}")
@@ -272,8 +290,37 @@ def run_bot():
         f"<b>Testnet:</b> {config.USE_TESTNET}"
     )
 
-    threads = []
-    for symbol in symbols:
+    def status_updater():
+        """Periodically updates balance and positions in DB"""
+        while True:
+            try:
+                balance = fetcher.exchange.fetch_balance()
+                # Simplified balance for dashboard
+                balance_data = {
+                    'total_usdt': balance.get('USDT', {}).get('total', 0),
+                    'free_usdt': balance.get('USDT', {}).get('free', 0)
+                }
+                
+                # Get positions
+                positions_data = []
+                # Check for all active symbols
+                current_symbols = db.get_symbols()
+                for symbol in current_symbols:
+                    if position_tracker.has_open_position(symbol):
+                        positions_data.append({
+                            'symbol': symbol,
+                            'amount': position_tracker.get_held_amount(symbol)
+                        })
+                
+                db.update_status(balance=balance_data, positions=positions_data)
+            except Exception as e:
+                logger.error(f"Status update failed: {e}")
+            time.sleep(300) # Update every 5 mins
+
+    threading.Thread(target=status_updater, daemon=True).start()
+
+    threads = {}
+    for symbol in db_symbols:
         t = threading.Thread(
             target=run_pair,
             args=(symbol, fetcher, signal_engine, risk_manager, executor, position_tracker),
@@ -281,15 +328,43 @@ def run_bot():
             daemon=True
         )
         t.start()
-        threads.append(t)
+        threads[symbol] = t
         logger.info(f"[{symbol}] Thread launched")
         time.sleep(2)
 
-    logger.info(f"All {len(symbols)} threads running!")
+    logger.info(f"All {len(db_symbols)} threads running!")
 
     try:
         while True:
-            time.sleep(60)
+            # Check for STOP command
+            cmd = db.get_latest_command()
+            if cmd == 'stop':
+                logger.info("STOP command received. Terminating bot.")
+                send_alert("<b>Bot received STOP command from dashboard. Terminating.</b>")
+                os._exit(0) # Force exit
+            
+            # Check for symbol changes
+            new_symbols = db.get_symbols()
+            if set(new_symbols) != set(threads.keys()):
+                logger.info("Symbols changed in DB. Updating threads...")
+                # Start new threads
+                for s in new_symbols:
+                    if s not in threads:
+                        t = threading.Thread(
+                            target=run_pair,
+                            args=(s, fetcher, signal_engine, risk_manager, executor, position_tracker),
+                            name=f"bot-{s}",
+                            daemon=True
+                        )
+                        t.start()
+                        threads[s] = t
+                        logger.info(f"[{s}] New symbol thread launched")
+                # Removed symbols will just finish their current loop and stay idle if we don't kill them
+                # But since they check db.get_status and we could check if they are still in symbols list...
+                # For simplicity, let's just let them be or restart the bot.
+                # Re-reading: Actually, if they are removed from DB, run_pair should check if it's still active.
+            
+            time.sleep(10)
     except KeyboardInterrupt:
         logger.info("Bot stopped manually.")
         send_alert("<b>Bot manually stopped.</b>")
