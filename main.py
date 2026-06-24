@@ -6,13 +6,15 @@ Each pair runs in its own thread.
 Confirms signals across multiple timeframes before trading.
 """
 
+import os
 import time
 import logging
 import asyncio
 import threading
-import os
 from telegram import Bot
 import config
+import subprocess
+import sys
 from dashboard.shared_db import DashboardDB
 
 os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
@@ -280,6 +282,25 @@ def run_bot():
     executor         = OrderExecutor(fetcher.exchange, config)
     position_tracker = PositionTracker(fetcher.exchange, config.MARKET_TYPE)
 
+    # Autostart Dashboard
+    try:
+        logger.info("Starting dashboard process...")
+        env = os.environ.copy()
+        env["LOG_FILE"] = config.LOG_FILE
+        # Use sys.executable to ensure we use the same python environment
+        dashboard_proc = subprocess.Popen(
+            [sys.executable, "dashboard/dashboard_app.py"],
+            cwd=os.getcwd(),
+            env=env,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+        )
+        logger.info(f"Dashboard started with PID {dashboard_proc.pid}")
+    except Exception as e:
+        logger.error(f"Failed to start dashboard: {e}")
+
+    # Set Start Time in DB
+    db.update_status(status='RUNNING', start_time=datetime.now().isoformat())
+
     pairs_list = "\n".join([f"- <b>{s}</b>" for s in db_symbols])
     tf_list    = " | ".join(timeframes)
     send_alert(
@@ -295,27 +316,43 @@ def run_bot():
         while True:
             try:
                 balance = fetcher.exchange.fetch_balance()
-                # Simplified balance for dashboard
+                # Enhanced balance for dashboard
+                total_equity = 0
+                if config.MARKET_TYPE in ['future', 'swap', 'linear', 'inverse']:
+                    total_equity = float(balance.get('info', {}).get('result', {}).get('list', [{}])[0].get('totalEquity', 0))
+                else:
+                    # For spot, calculate total USDT value of major holdings if needed, 
+                    # but here we'll just use total USDT + available USDT for simplicity
+                    total_equity = balance.get('USDT', {}).get('total', 0)
+
                 balance_data = {
-                    'total_usdt': balance.get('USDT', {}).get('total', 0),
+                    'total_usdt': total_equity if total_equity > 0 else balance.get('USDT', {}).get('total', 0),
                     'free_usdt': balance.get('USDT', {}).get('free', 0)
                 }
                 
                 # Get positions
                 positions_data = []
-                # Check for all active symbols
                 current_symbols = db.get_symbols()
                 for symbol in current_symbols:
                     if position_tracker.has_open_position(symbol):
+                        amt = position_tracker.get_held_amount(symbol)
+                        # Try to get current price for the UI
+                        try:
+                            ticker = fetcher.exchange.fetch_ticker(symbol)
+                            price = ticker.get('last', 0)
+                        except:
+                            price = 0
+                            
                         positions_data.append({
                             'symbol': symbol,
-                            'amount': position_tracker.get_held_amount(symbol)
+                            'amount': amt,
+                            'price': price
                         })
                 
                 db.update_status(balance=balance_data, positions=positions_data)
             except Exception as e:
                 logger.error(f"Status update failed: {e}")
-            time.sleep(300) # Update every 5 mins
+            time.sleep(30) # Update every 30s for more "live" feel
 
     threading.Thread(target=status_updater, daemon=True).start()
 

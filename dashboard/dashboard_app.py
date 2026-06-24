@@ -46,6 +46,10 @@ async def get_trades():
 async def get_symbols():
     return db.get_symbols()
 
+@app.get("/api/logs", dependencies=[Depends(authenticate)])
+async def get_logs():
+    return db.get_logs(log_path=os.getenv("LOG_FILE", "bot.log"))
+
 @app.post("/api/command", dependencies=[Depends(authenticate)])
 async def send_command(req: CommandRequest):
     db.send_command(req.command)

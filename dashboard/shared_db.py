@@ -21,6 +21,7 @@ class DashboardDB:
                     id INTEGER PRIMARY KEY,
                     status TEXT,
                     last_update TEXT,
+                    start_time TEXT,
                     balance TEXT,
                     positions TEXT
                 )
@@ -65,14 +66,21 @@ class DashboardDB:
                 )
             ''')
             
+            # Update schema if start_time is missing (for existing databases)
+            try:
+                cursor.execute("ALTER TABLE bot_status ADD COLUMN start_time TEXT")
+            except sqlite3.OperationalError:
+                pass # already exists
+                
             # Initial Status if empty
             cursor.execute("SELECT COUNT(*) FROM bot_status")
             if cursor.fetchone()[0] == 0:
-                cursor.execute("INSERT INTO bot_status (id, status, last_update) VALUES (1, 'RUNNING', ?)", (datetime.now().isoformat(),))
+                now = datetime.now().isoformat()
+                cursor.execute("INSERT INTO bot_status (id, status, last_update, start_time) VALUES (1, 'RUNNING', ?, ?)", (now, now))
             
             conn.commit()
 
-    def update_status(self, status=None, balance=None, positions=None):
+    def update_status(self, status=None, balance=None, positions=None, start_time=None):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
@@ -82,7 +90,20 @@ class DashboardDB:
                 cursor.execute("UPDATE bot_status SET balance = ?, last_update = ? WHERE id = 1", (json.dumps(balance), now))
             if positions is not None:
                 cursor.execute("UPDATE bot_status SET positions = ?, last_update = ? WHERE id = 1", (json.dumps(positions), now))
+            if start_time:
+                cursor.execute("UPDATE bot_status SET start_time = ?, last_update = ? WHERE id = 1", (start_time, now))
             conn.commit()
+
+    def get_logs(self, log_path="bot.log", lines=20):
+        if not os.path.exists(log_path):
+            return ["Log file not found."]
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                # Read last lines efficiently
+                content = f.readlines()
+                return [line.strip() for line in content[-lines:]]
+        except Exception as e:
+            return [f"Error reading logs: {str(e)}"]
 
     def get_status(self):
         with sqlite3.connect(self.db_path) as conn:
