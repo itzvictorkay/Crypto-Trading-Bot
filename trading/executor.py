@@ -23,46 +23,31 @@ class OrderExecutor:
             side = 'buy' if signal == 'BUY' else 'sell'
             sl_side = 'sell' if side == 'buy' else 'buy'
 
-            # Main market order
-            logger.info(f"Placing {side.upper()} market order | {symbol} | Amount: {amount}")
-            order = self.exchange.create_market_order(
+            # Main market order with SL/TP attached (Preferred for Bybit)
+            params = {}
+            if sl_price > 0:
+                params['stopLoss'] = str(sl_price)
+            if tp_price > 0:
+                params['takeProfit'] = str(tp_price)
+            
+            # Bybit specific: positionIdx 0 for one-way mode
+            params['positionIdx'] = 0 
+
+            logger.info(f"Placing {side.upper()} order | {symbol} | Amount: {amount} | SL: {sl_price} | TP: {tp_price}")
+            order = self.exchange.create_order(
                 symbol=symbol,
+                type='market',
                 side=side,
-                amount=amount
+                amount=amount,
+                params=params
             )
-            logger.info(f"✅ Main order placed: {order['id']}")
+            logger.info(f"✅ Order placed with SL/TP: {order['id']}")
 
             # Log to DB
             try:
-                self.db.log_trade(symbol, side.upper(), order.get('price', 0), amount)
+                self.db.log_trade(symbol, side.upper(), order.get('price', current_price if 'current_price' in locals() else 0), amount)
             except Exception as e:
                 logger.error(f"Failed to log trade to DB: {e}")
-
-            # Stop-loss
-            try:
-                sl_order = self.exchange.create_order(
-                    symbol=symbol,
-                    type='stop_market',
-                    side=sl_side,
-                    amount=amount,
-                    params={'stopPrice': sl_price, 'reduceOnly': True}
-                )
-                logger.info(f"🛡️ Stop-loss set at {sl_price} | ID: {sl_order['id']}")
-            except Exception as e:
-                logger.warning(f"SL order failed (may not be supported on spot): {e}")
-
-            # Take-profit
-            try:
-                tp_order = self.exchange.create_order(
-                    symbol=symbol,
-                    type='take_profit_market',
-                    side=sl_side,
-                    amount=amount,
-                    params={'stopPrice': tp_price, 'reduceOnly': True}
-                )
-                logger.info(f"🎯 Take-profit set at {tp_price} | ID: {tp_order['id']}")
-            except Exception as e:
-                logger.warning(f"TP order failed (may not be supported on spot): {e}")
 
             return order
 
