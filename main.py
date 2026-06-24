@@ -12,6 +12,7 @@ import logging
 import asyncio
 import threading
 from telegram import Bot
+from datetime import datetime
 import config
 import subprocess
 import sys
@@ -287,9 +288,10 @@ def run_bot():
         logger.info("Starting dashboard process...")
         env = os.environ.copy()
         env["LOG_FILE"] = config.LOG_FILE
+        env["PYTHONPATH"] = os.getcwd()
         # Use sys.executable to ensure we use the same python environment
         dashboard_proc = subprocess.Popen(
-            [sys.executable, "dashboard/dashboard_app.py"],
+            [sys.executable, "-m", "dashboard.dashboard_app"],
             cwd=os.getcwd(),
             env=env,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
