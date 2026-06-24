@@ -280,7 +280,7 @@ def run_bot():
     executor         = OrderExecutor(fetcher.exchange, config)
     position_tracker = PositionTracker(fetcher.exchange, config.MARKET_TYPE)
 
-    pairs_list = "\n".join([f"- <b>{s}</b>" for s in symbols])
+    pairs_list = "\n".join([f"- <b>{s}</b>" for s in db_symbols])
     tf_list    = " | ".join(timeframes)
     send_alert(
         f"<b>Bot Started - Multi Timeframe</b>\n\n"
