@@ -16,6 +16,7 @@ from datetime import datetime
 import config
 import subprocess
 import sys
+import atexit
 from dashboard.shared_db import DashboardDB
 
 os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
@@ -283,20 +284,42 @@ def run_bot():
     executor         = OrderExecutor(fetcher.exchange, config)
     position_tracker = PositionTracker(fetcher.exchange, config.MARKET_TYPE)
 
+    # Clean up port 8000 (standard dashboard port)
+    if os.name == 'nt':
+        port = int(os.getenv("DASHBOARD_PORT", 8000))
+        try:
+            # Find and kill any process using the dashboard port
+            find_port_cmd = f"netstat -ano | findstr :{port}"
+            port_output = subprocess.check_output(find_port_cmd, shell=True).decode()
+            for line in port_output.splitlines():
+                if "LISTENING" in line:
+                    pid = line.strip().split()[-1]
+                    logger.info(f"Cleaning up port {port} (killing PID {pid})...")
+                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+        except:
+            pass
+
     # Autostart Dashboard
+    dashboard_proc = None
     try:
         logger.info("Starting dashboard process...")
         env = os.environ.copy()
         env["LOG_FILE"] = config.LOG_FILE
         env["PYTHONPATH"] = os.getcwd()
-        # Use sys.executable to ensure we use the same python environment
         dashboard_proc = subprocess.Popen(
             [sys.executable, "-m", "dashboard.dashboard_app"],
             cwd=os.getcwd(),
-            env=env,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            env=env
         )
         logger.info(f"Dashboard started with PID {dashboard_proc.pid}")
+        
+        # Ensure dashboard dies when bot dies
+        def cleanup():
+            if dashboard_proc:
+                logger.info("Terminating dashboard...")
+                dashboard_proc.terminate()
+        atexit.register(cleanup)
+        
     except Exception as e:
         logger.error(f"Failed to start dashboard: {e}")
 
