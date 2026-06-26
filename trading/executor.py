@@ -29,11 +29,16 @@ class OrderExecutor:
                 params['stopLoss'] = str(sl_price)
             if tp_price > 0:
                 params['takeProfit'] = str(tp_price)
-            
-            # Bybit specific: positionIdx 0 for one-way mode
-            params['positionIdx'] = 0 
 
-            logger.info(f"Placing {side.upper()} order | {symbol} | Amount: {amount} | SL: {sl_price} | TP: {tp_price}")
+            # Bybit specific
+            category = 'linear' if self.config.MARKET_TYPE == 'linear' else 'spot'
+            params['category'] = category
+            
+            # positionIdx 0 for one-way mode (futures)
+            if category != 'spot':
+                params['positionIdx'] = 0 
+
+            logger.info(f"Placing {side.upper()} order | {symbol} | Amount: {amount} | SL: {sl_price} | TP: {tp_price} | Category: {category}")
             order = self.exchange.create_order(
                 symbol=symbol,
                 type='market',

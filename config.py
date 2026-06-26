@@ -25,7 +25,8 @@ CANDLE_LIMIT = int(os.getenv("CANDLE_LIMIT", "250"))
 LOOP_INTERVAL = int(os.getenv("LOOP_INTERVAL", "3600"))
 
 # ── Risk Management ───────────────────────────────
-MAX_RISK_PER_TRADE = float(os.getenv("MAX_RISK_PER_TRADE", "0.01"))
+MAX_RISK_PER_TRADE = float(os.getenv("MAX_RISK_PER_TRADE", "0.1"))
+MAX_BALANCE_USAGE_PCT = float(os.getenv("MAX_BALANCE_USAGE_PCT", "0.2"))  # Use 20% of balance per trade max
 STOP_LOSS_PCT      = float(os.getenv("STOP_LOSS_PCT", "0.02"))
 TAKE_PROFIT_PCT    = float(os.getenv("TAKE_PROFIT_PCT", "0.04"))
 
@@ -59,6 +60,17 @@ TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "true").lower() == "true"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CRYPTOPANIC_KEY   = os.getenv("CRYPTOPANIC_KEY", "")
 SENTIMENT_ENABLED = os.getenv("SENTIMENT_ENABLED", "false").lower() == "true"
+
+# ── AI Analysis (Google Gemini) ───────────────────
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "false").lower() == "true"
+GEMINI_MIN_CONFIDENCE = int(os.getenv("GEMINI_MIN_CONFIDENCE", "70"))
+
+# ── Dynamic Risk (ATR) ────────────────────────────
+USE_ATR_STOP        = os.getenv("USE_ATR_STOP", "true").lower() == "true"
+ATR_PERIOD         = int(os.getenv("ATR_PERIOD", "14"))
+ATR_SL_MULTIPLIER  = float(os.getenv("ATR_SL_MULTIPLIER", "1.5"))
+ATR_TP_MULTIPLIER  = float(os.getenv("ATR_TP_MULTIPLIER", "3.0"))  # 2:1 Reward:Risk
 
 # ── Logging ───────────────────────────────────────
 LOG_FILE  = os.getenv("LOG_FILE", "bot.log")

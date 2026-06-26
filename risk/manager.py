@@ -6,6 +6,7 @@ Never risks more than MAX_RISK_PER_TRADE of account balance per trade.
 """
 
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -58,24 +59,50 @@ class RiskManager:
                 return 0.0
 
             risk_amount = balance * self.config.MAX_RISK_PER_TRADE
-            amount = risk_amount / (current_price * self.config.STOP_LOSS_PCT)
+            
+            # Risk-based sizing: how much to buy so that if SL is hit, we lose risk_amount
+            size_by_risk = risk_amount / (current_price * self.config.STOP_LOSS_PCT)
+            
+            # Balance-cap sizing: never use more than X% of total wallet for ONE trade
+            size_by_cap = (balance * self.config.MAX_BALANCE_USAGE_PCT) / current_price
+            
+            # Use the more conservative of the two
+            amount = min(size_by_risk, size_by_cap)
             amount = round(amount, 6)
 
-            logger.info(f"Position size: {amount} | Risk amount: {risk_amount:.2f} USDT")
+            logger.info(f"Position size: {amount} (Risk-limited: {size_by_risk:.4f}, Cap-limited: {size_by_cap:.4f})")
             return amount
         except Exception as e:
             logger.error(f"Position sizing error: {e}")
             return 0.0
 
-    def calculate_sl_tp(self, signal: str, entry_price: float):
-        """Calculate stop-loss and take-profit levels."""
-        if signal == 'BUY':
-            sl = entry_price * (1 - self.config.STOP_LOSS_PCT)
-            tp = entry_price * (1 + self.config.TAKE_PROFIT_PCT)
+    def calculate_sl_tp(self, signal: str, entry_price: float, atr: float = None):
+        """
+        Calculate stop-loss and take-profit levels.
+        If ATR is provided and USE_ATR_STOP is True, uses dynamic levels.
+        Otherwise falls back to fixed percentages.
+        """
+        if self.config.USE_ATR_STOP and atr and not math.isnan(atr):
+            sl_dist = atr * self.config.ATR_SL_MULTIPLIER
+            tp_dist = atr * self.config.ATR_TP_MULTIPLIER
+            
+            if signal == 'BUY':
+                sl = entry_price - sl_dist
+                tp = entry_price + tp_dist
+            else:
+                sl = entry_price + sl_dist
+                tp = entry_price - tp_dist
+            
+            logger.info(f"Using ATR-based SL/TP: ATR={atr:.4f} | R:R={self.config.ATR_TP_MULTIPLIER/self.config.ATR_SL_MULTIPLIER:.1f}")
         else:
-            sl = entry_price * (1 + self.config.STOP_LOSS_PCT)
-            tp = entry_price * (1 - self.config.TAKE_PROFIT_PCT)
+            if signal == 'BUY':
+                sl = entry_price * (1 - self.config.STOP_LOSS_PCT)
+                tp = entry_price * (1 + self.config.TAKE_PROFIT_PCT)
+            else:
+                sl = entry_price * (1 + self.config.STOP_LOSS_PCT)
+                tp = entry_price * (1 - self.config.TAKE_PROFIT_PCT)
+            
+            logger.info(f"Using FIXED % SL/TP: R:R={self.config.TAKE_PROFIT_PCT/self.config.STOP_LOSS_PCT:.1f}")
 
         sl, tp = round(sl, 4), round(tp, 4)
-        logger.info(f"SL: {sl} | TP: {tp} | R:R = 1:{self.config.TAKE_PROFIT_PCT / self.config.STOP_LOSS_PCT:.1f}")
         return sl, tp

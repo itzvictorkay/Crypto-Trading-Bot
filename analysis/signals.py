@@ -14,6 +14,7 @@ import logging
 import requests
 import anthropic
 import os
+from .gemini_analyzer import GeminiAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ def get_claude_sentiment(coin: str = "BTC", cryptopanic_key: str = "") -> str:
 class SignalEngine:
     def __init__(self, config):
         self.config = config
+        self.gemini = None
+        if self.config.GEMINI_ENABLED and self.config.GOOGLE_API_KEY:
+            self.gemini = GeminiAnalyzer(self.config.GOOGLE_API_KEY)
 
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """Calculate all technical indicators with robust column name handling."""
@@ -107,7 +111,10 @@ class SignalEngine:
             # Volume average
             df['avg_volume'] = df['volume'].rolling(20).mean()
 
-            logger.info("All indicators calculated successfully.")
+            # ATR for dynamic SL/TP
+            df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=self.config.ATR_PERIOD)
+
+            logger.info("All indicators (including ATR) calculated successfully.")
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")
         return df
@@ -194,15 +201,37 @@ class SignalEngine:
             if raw_signal == 'HOLD':
                 return 'HOLD', indicators
 
-            # ── Sentiment Filter ──────────────────────────────────
-            if os.getenv("ANTHROPIC_API_KEY") and os.getenv("CRYPTOPANIC_KEY"):
+            # ── Sentiment Filter (Claude) ─────────────────────────
+            if self.config.SENTIMENT_ENABLED and os.getenv("ANTHROPIC_API_KEY") and os.getenv("CRYPTOPANIC_KEY"):
                 coin = self.config.SYMBOL.split('/')[0]
                 sentiment = get_claude_sentiment(coin, os.getenv("CRYPTOPANIC_KEY", ""))
                 indicators['sentiment'] = sentiment
                 if raw_signal == 'BUY' and sentiment == 'NEGATIVE':
+                    logger.info(f"Signal BUY blocked by NEGATIVE sentiment.")
                     return 'HOLD', indicators
                 if raw_signal == 'SELL' and sentiment == 'POSITIVE':
+                    logger.info(f"Signal SELL blocked by POSITIVE sentiment.")
                     return 'HOLD', indicators
+
+            # ── AI Validation (Gemini) ────────────────────────────
+            if self.gemini and self.config.GEMINI_ENABLED:
+                # Prepare data for Gemini
+                df_last_5 = df.tail(5)[['timestamp', 'open', 'high', 'low', 'close', 'volume']].to_string()
+                # Use current timeframe from indicators if multiple are used, or just default
+                # But for now, we just pass what we have
+                ai_result = self.gemini.analyze_trade(self.config.SYMBOL, "current", df_last_5, indicators)
+                
+                indicators['ai_signal'] = ai_result.get('signal')
+                indicators['ai_confidence'] = ai_result.get('confidence')
+                indicators['ai_reasoning'] = ai_result.get('reasoning')
+                
+                if ai_result.get('signal') != raw_signal or ai_result.get('confidence', 0) < self.config.GEMINI_MIN_CONFIDENCE:
+                    logger.info(f"Signal {raw_signal} rejected by Gemini. AI says: {ai_result.get('signal')} ({ai_result.get('confidence')}%)")
+                    return 'HOLD', indicators
+
+            # Include ATR in indicators for risk manager
+            if 'atr' in last:
+                indicators['atr'] = last['atr']
 
             return raw_signal, indicators
 

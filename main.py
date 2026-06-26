@@ -206,7 +206,9 @@ def run_pair(symbol: str, fetcher, signal_engine, risk_manager, executor, positi
                 else:
                     amount = risk_manager.calculate_position_size(symbol, current_price)
                     if amount > 0:
-                        sl, tp = risk_manager.calculate_sl_tp(signal, current_price)
+                        # Extract ATR from indicators if present
+                        atr = indicators.get('atr')
+                        sl, tp = risk_manager.calculate_sl_tp(signal, current_price, atr=atr)
                         order  = executor.execute_trade(symbol, signal, amount, sl, tp)
                         if order:
                             send_alert(
@@ -252,6 +254,13 @@ def run_pair(symbol: str, fetcher, signal_engine, risk_manager, executor, positi
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+# ── Centralized Sanitization ──────────────────────────────────────────────────
+def sanitize_symbol(symbol: str, market_type: str) -> str:
+    if market_type == 'linear':
+        return symbol if ':' in symbol else f"{symbol}:{symbol.split('/')[-1]}"
+    return symbol
+
+
 def run_bot():
     logger.info("=" * 60)
     logger.info("  CRYPTO BOT - MULTI PAIR + MULTI TIMEFRAME")
@@ -273,6 +282,9 @@ def run_bot():
         logger.error("No symbols in .env or DB!")
         return
 
+    # Sanitize symbols
+    db_symbols = [sanitize_symbol(s, config.MARKET_TYPE) for s in db_symbols]
+
     logger.info(f"Pairs: {db_symbols}")
     logger.info(f"Timeframes: {timeframes}")
     logger.info(f"Min confluence: {config.MIN_TIMEFRAME_CONFLUENCE}/{len(timeframes)}")
@@ -284,11 +296,10 @@ def run_bot():
     executor         = OrderExecutor(fetcher.exchange, config)
     position_tracker = PositionTracker(fetcher.exchange, config.MARKET_TYPE)
 
-    # Clean up port 8000 (standard dashboard port)
+    # Clean up port 8000
     if os.name == 'nt':
         port = int(os.getenv("DASHBOARD_PORT", 8000))
         try:
-            # Find and kill any process using the dashboard port
             find_port_cmd = f"netstat -ano | findstr :{port}"
             port_output = subprocess.check_output(find_port_cmd, shell=True).decode()
             for line in port_output.splitlines():
@@ -313,17 +324,14 @@ def run_bot():
         )
         logger.info(f"Dashboard started with PID {dashboard_proc.pid}")
         
-        # Ensure dashboard dies when bot dies
         def cleanup():
             if dashboard_proc:
                 logger.info("Terminating dashboard...")
                 dashboard_proc.terminate()
         atexit.register(cleanup)
-        
     except Exception as e:
         logger.error(f"Failed to start dashboard: {e}")
 
-    # Set Start Time in DB
     db.update_status(status='RUNNING', start_time=datetime.now().isoformat())
 
     pairs_list = "\n".join([f"- <b>{s}</b>" for s in db_symbols])
@@ -337,17 +345,13 @@ def run_bot():
     )
 
     def status_updater():
-        """Periodically updates balance and positions in DB"""
         while True:
             try:
                 balance = fetcher.exchange.fetch_balance()
-                # Enhanced balance for dashboard
                 total_equity = 0
                 if config.MARKET_TYPE in ['future', 'swap', 'linear', 'inverse']:
                     total_equity = float(balance.get('info', {}).get('result', {}).get('list', [{}])[0].get('totalEquity', 0))
                 else:
-                    # For spot, calculate total USDT value of major holdings if needed, 
-                    # but here we'll just use total USDT + available USDT for simplicity
                     total_equity = balance.get('USDT', {}).get('total', 0)
 
                 balance_data = {
@@ -355,29 +359,23 @@ def run_bot():
                     'free_usdt': balance.get('USDT', {}).get('free', 0)
                 }
                 
-                # Get positions
                 positions_data = []
-                current_symbols = db.get_symbols()
+                # Use sanitized symbols for position check
+                raw_symbols = db.get_symbols()
+                current_symbols = [sanitize_symbol(s, config.MARKET_TYPE) for s in raw_symbols]
                 for symbol in current_symbols:
                     if position_tracker.has_open_position(symbol):
                         amt = position_tracker.get_held_amount(symbol)
-                        # Try to get current price for the UI
                         try:
                             ticker = fetcher.exchange.fetch_ticker(symbol)
                             price = ticker.get('last', 0)
                         except:
                             price = 0
-                            
-                        positions_data.append({
-                            'symbol': symbol,
-                            'amount': amt,
-                            'price': price
-                        })
-                
+                        positions_data.append({'symbol': symbol, 'amount': amt, 'price': price})
                 db.update_status(balance=balance_data, positions=positions_data)
             except Exception as e:
                 logger.error(f"Status update failed: {e}")
-            time.sleep(30) # Update every 30s for more "live" feel
+            time.sleep(30)
 
     threading.Thread(target=status_updater, daemon=True).start()
 
@@ -398,18 +396,18 @@ def run_bot():
 
     try:
         while True:
-            # Check for STOP command
             cmd = db.get_latest_command()
             if cmd == 'stop':
                 logger.info("STOP command received. Terminating bot.")
                 send_alert("<b>Bot received STOP command from dashboard. Terminating.</b>")
-                os._exit(0) # Force exit
+                os._exit(0)
             
-            # Check for symbol changes
-            new_symbols = db.get_symbols()
+            # Sync thread list with DB (Sanitized)
+            raw_new_symbols = db.get_symbols()
+            new_symbols = [sanitize_symbol(s, config.MARKET_TYPE) for s in raw_new_symbols]
+            
             if set(new_symbols) != set(threads.keys()):
                 logger.info("Symbols changed in DB. Updating threads...")
-                # Start new threads
                 for s in new_symbols:
                     if s not in threads:
                         t = threading.Thread(
@@ -421,10 +419,12 @@ def run_bot():
                         t.start()
                         threads[s] = t
                         logger.info(f"[{s}] New symbol thread launched")
-                # Removed symbols will just finish their current loop and stay idle if we don't kill them
-                # But since they check db.get_status and we could check if they are still in symbols list...
-                # For simplicity, let's just let them be or restart the bot.
-                # Re-reading: Actually, if they are removed from DB, run_pair should check if it's still active.
+                
+                # Cleanup symbols no longer in DB
+                for s in list(threads.keys()):
+                    if s not in new_symbols:
+                        logger.info(f"[{s}] Symbol removed from DB. Thread will remain idle.")
+                        del threads[s]
             
             time.sleep(10)
     except KeyboardInterrupt:
