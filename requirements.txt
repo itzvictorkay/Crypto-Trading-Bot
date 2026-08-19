@@ -1,8 +1,32 @@
+# ── Exchange & Market Data ──────────────────────
 ccxt>=4.2.0
 pandas>=2.1.0
 pandas-ta>=0.3.14b0
+
+# ── Configuration & Environment ──────────────────
 python-dotenv>=1.0.0
+
+# ── Notifications ───────────────────────────────
 python-telegram-bot>=20.6
+
+# ── AI & LLMs ───────────────────────────────────
 anthropic>=0.20.0
 google-genai>=0.1.0
+langchain-core>=0.1.40
+langchain-community>=0.0.40
+langchain-anthropic>=0.1.0
+langgraph>=0.1.0
+
+# ── RAG & Vector Database ───────────────────────
+chromadb>=0.3.21
+
+# ── Data Validation ──────────────────────────────
+pydantic>=2.0.0
+
+# ── APIs & HTTP ──────────────────────────────────
 requests>=2.31.0
+
+# ── Web Framework ───────────────────────────────
+fastapi>=0.110.0
+uvicorn>=0.28.0
+

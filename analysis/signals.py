@@ -215,10 +215,15 @@ class SignalEngine:
 
             # ── AI Validation (Gemini) ────────────────────────────
             if self.gemini and self.config.GEMINI_ENABLED:
-                # Prepare data for Gemini
-                df_last_5 = df.tail(5)[['timestamp', 'open', 'high', 'low', 'close', 'volume']].to_string()
-                # Use current timeframe from indicators if multiple are used, or just default
-                # But for now, we just pass what we have
+                # Prepare data for Gemini - handle cases where timestamp might be the index
+                df_temp = df.tail(5).copy()
+                if 'timestamp' not in df_temp.columns and df_temp.index.name == 'timestamp':
+                    df_temp = df_temp.reset_index()
+                
+                # Filter to only existing columns to avoid KeyErrors
+                cols_to_show = [c for c in ['timestamp', 'open', 'high', 'low', 'close', 'volume'] if c in df_temp.columns]
+                df_last_5 = df_temp[cols_to_show].to_string()
+                
                 ai_result = self.gemini.analyze_trade(self.config.SYMBOL, "current", df_last_5, indicators)
                 
                 indicators['ai_signal'] = ai_result.get('signal')

@@ -18,6 +18,7 @@ class DataFetcher:
             'apiKey': api_key,
             'secret': api_secret,
             'enableRateLimit': True,
+            'adjustForTimeDifference': True,
             'options': {
                 'defaultType': market_type,
                 'recvWindow': 10000,

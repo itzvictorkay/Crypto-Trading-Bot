@@ -297,7 +297,7 @@ def run_bot():
     position_tracker = PositionTracker(fetcher.exchange, config.MARKET_TYPE)
 
     # Clean up port 8000
-    if os.name == 'nt':
+    if config.AUTOSTART_DASHBOARD and os.name == 'nt':
         port = int(os.getenv("DASHBOARD_PORT", 8000))
         try:
             find_port_cmd = f"netstat -ano | findstr :{port}"
@@ -312,25 +312,26 @@ def run_bot():
 
     # Autostart Dashboard
     dashboard_proc = None
-    try:
-        logger.info("Starting dashboard process...")
-        env = os.environ.copy()
-        env["LOG_FILE"] = config.LOG_FILE
-        env["PYTHONPATH"] = os.getcwd()
-        dashboard_proc = subprocess.Popen(
-            [sys.executable, "-m", "dashboard.dashboard_app"],
-            cwd=os.getcwd(),
-            env=env
-        )
-        logger.info(f"Dashboard started with PID {dashboard_proc.pid}")
-        
-        def cleanup():
-            if dashboard_proc:
-                logger.info("Terminating dashboard...")
-                dashboard_proc.terminate()
-        atexit.register(cleanup)
-    except Exception as e:
-        logger.error(f"Failed to start dashboard: {e}")
+    if config.AUTOSTART_DASHBOARD:
+        try:
+            logger.info("Starting dashboard process...")
+            env = os.environ.copy()
+            env["LOG_FILE"] = config.LOG_FILE
+            env["PYTHONPATH"] = os.getcwd()
+            dashboard_proc = subprocess.Popen(
+                [sys.executable, "-m", "dashboard.dashboard_app"],
+                cwd=os.getcwd(),
+                env=env
+            )
+            logger.info(f"Dashboard started with PID {dashboard_proc.pid}")
+            
+            def cleanup():
+                if dashboard_proc:
+                    logger.info("Terminating dashboard...")
+                    dashboard_proc.terminate()
+            atexit.register(cleanup)
+        except Exception as e:
+            logger.error(f"Failed to start dashboard: {e}")
 
     db.update_status(status='RUNNING', start_time=datetime.now().isoformat())
 

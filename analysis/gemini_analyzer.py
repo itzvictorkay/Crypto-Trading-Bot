@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class GeminiAnalyzer:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        self.model_id = "gemini-2.0-flash"
+        self.model_id = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
     def analyze_trade(self, symbol: str, timeframe: str, df_last_5: str, indicators: dict) -> dict:
         """

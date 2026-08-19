@@ -66,6 +66,18 @@ class DashboardDB:
                 )
             ''')
             
+            # Historical Research Reports
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    coin TEXT,
+                    timeframe TEXT,
+                    query TEXT,
+                    report TEXT
+                )
+            ''')
+            
             # Update schema if start_time is missing (for existing databases)
             try:
                 cursor.execute("ALTER TABLE bot_status ADD COLUMN start_time TEXT")
@@ -187,3 +199,19 @@ class DashboardDB:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM symbols WHERE symbol = ?", (symbol,))
             conn.commit()
+
+    def add_report(self, coin, timeframe, query, report):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO reports (timestamp, coin, timeframe, query, report) VALUES (?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(), coin, timeframe, query, report)
+            )
+            conn.commit()
+
+    def get_reports(self, limit=50):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM reports ORDER BY id DESC LIMIT ?", (limit,))
+            return [dict(row) for row in cursor.fetchall()]

@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoBot Pro | Advanced Dashboard</title>
+    <title>CryptoBot Pro | Advanced AI Dashboard</title>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #030712;
             --sidebar: #0f172a;
-            --card: rgba(30, 41, 59, 0.6);
+            --card: rgba(30, 41, 59, 0.4);
             --accent: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.3);
+            --accent-glow: rgba(56, 189, 248, 0.2);
             --secondary: #818cf8;
             --text: #f8fafc;
             --text-muted: #94a3b8;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
+            --border: rgba(255, 255, 255, 0.05);
         }
 
         * {
@@ -36,11 +38,11 @@
             overflow-x: hidden;
         }
 
-        /* Sidebar */
+        /* Sidebar Navigation */
         nav {
-            width: 260px;
+            width: 280px;
             background: var(--sidebar);
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             padding: 2rem 1.5rem;
@@ -69,26 +71,30 @@
             color: var(--text-muted);
             text-decoration: none;
             border-radius: 0.75rem;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             margin-bottom: 0.5rem;
             cursor: pointer;
+            border: 1px solid transparent;
         }
 
         .nav-link:hover, .nav-link.active {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
             color: var(--text);
+            border-color: rgba(255, 255, 255, 0.05);
         }
 
         .nav-link.active {
             border-left: 3px solid var(--accent);
+            background: rgba(56, 189, 248, 0.05);
         }
 
-        /* Main Content */
+        /* Main Content Container */
         main {
-            margin-left: 260px;
+            margin-left: 280px;
             flex: 1;
             padding: 2.5rem;
             max-width: 1400px;
+            width: calc(100% - 280px);
         }
 
         header {
@@ -96,6 +102,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
         }
 
         .header-title h1 {
@@ -113,9 +121,9 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.02);
             border-radius: 9999px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
             font-size: 0.875rem;
             font-weight: 600;
         }
@@ -130,6 +138,21 @@
         .status-running .dot { background: var(--success); box-shadow: 0 0 10px var(--success); }
         .status-paused .dot { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
         .status-stopped .dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        .status-offline .dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+
+        /* Tabs display control */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         /* Stats Grid */
         .stats-grid {
@@ -142,21 +165,22 @@
         .stat-card {
             background: var(--card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
             border-radius: 1.25rem;
             padding: 1.5rem;
-            transition: transform 0.2s;
+            transition: all 0.2s ease;
         }
 
         .stat-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
             border-color: var(--accent);
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.05);
         }
 
         .stat-icon {
             width: 40px;
             height: 40px;
-            background: rgba(56, 189, 248, 0.1);
+            background: rgba(56, 189, 248, 0.05);
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -176,7 +200,7 @@
             font-weight: 700;
         }
 
-        /* Large Sections */
+        /* Grid Panels */
         .content-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -186,9 +210,10 @@
         .panel {
             background: var(--card);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
             border-radius: 1.5rem;
             padding: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .panel-header {
@@ -206,6 +231,45 @@
             gap: 0.5rem;
         }
 
+        /* Form Inputs and buttons */
+        input, select, textarea {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        button {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary { background: var(--accent); color: var(--bg); }
+        .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+        .btn-outline { background: transparent; border-color: var(--border); color: var(--text); }
+        .btn-outline:hover { background: rgba(255, 255, 255, 0.05); }
+
+        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.15); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+
         /* Tables */
         table {
             width: 100%;
@@ -219,13 +283,13 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border);
         }
 
         td {
             padding: 1rem;
             font-size: 0.875rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
         }
 
         .badge-buy { color: var(--success); background: rgba(16, 185, 129, 0.1); padding: 0.25rem 0.5rem; border-radius: 6px; }
@@ -237,42 +301,21 @@
             gap: 0.75rem;
         }
 
-        button {
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .btn-primary { background: var(--accent); color: var(--bg); }
-        .btn-primary:hover { transform: scale(1.02); filter: brightness(1.1); }
-
-        .btn-outline { background: transparent; border-color: rgba(255, 255, 255, 0.1); color: var(--text); }
-        .btn-outline:hover { background: rgba(255, 255, 255, 0.05); }
-
-        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
-        .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
-
         /* Terminal Logs */
         .logs-container {
-            background: #000;
+            background: #020617;
             border-radius: 1rem;
             padding: 1rem;
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.75rem;
             height: 300px;
             overflow-y: auto;
-            color: #ccc;
+            color: #94a3b8;
             line-height: 1.5;
+            border: 1px solid var(--border);
         }
 
-        .log-line { border-bottom: 1px solid #111; padding: 2px 0; }
+        .log-line { border-bottom: 1px solid rgba(255, 255, 255, 0.02); padding: 2px 0; }
         .log-info { color: #38bdf8; }
         .log-error { color: #ef4444; }
         .log-warning { color: #f59e0b; }
@@ -281,25 +324,249 @@
         .pair-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
         .pair-tag {
             padding: 0.4rem 0.75rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
             border-radius: 8px;
             display: flex;
             align-items: center;
             gap: 0.5rem;
             font-size: 0.8125rem;
         }
+
         .btn-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; }
         .btn-icon:hover { color: var(--danger); }
 
+        /* RAG Drag & Drop Card */
+        .drag-card {
+            border: 2px dashed rgba(56, 189, 248, 0.3);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            text-align: center;
+            background: rgba(30, 41, 59, 0.2);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .drag-card:hover, .drag-card.dragover {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.03);
+        }
+
+        /* AI Research Chat Layout */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 1.5rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: rgba(3, 7, 18, 0.2);
+        }
+
+        .chat-message {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 85%;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+        }
+
+        .chat-message.agent {
+            align-self: flex-start;
+            width: 100%;
+        }
+
+        .message-bubble {
+            padding: 1rem;
+            border-radius: 1rem;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+
+        .user .message-bubble {
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 600;
+        }
+
+        .agent .message-bubble {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .message-bubble table {
+            margin: 1rem 0;
+            font-size: 0.8125rem;
+        }
+
+        .message-bubble h1, .message-bubble h2, .message-bubble h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .message-bubble h1 { font-size: 1.25rem; }
+        .message-bubble h2 { font-size: 1.125rem; }
+        .message-bubble h3 { font-size: 1rem; }
+
+        .message-bubble ul, .message-bubble ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .message-bubble pre {
+            background: #020617;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .message-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .chat-input-bar {
+            padding: 1rem 1.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+        }
+
+        /* Reports Split View */
+        .reports-split {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 1.5rem;
+            height: 700px;
+        }
+
+        .reports-list {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 1.5rem;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .report-item {
+            padding: 1rem;
+            border-radius: 1rem;
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .report-item:hover, .report-item.active {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: var(--accent);
+        }
+
+        .report-item-title {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .report-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .report-viewer {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 1.5rem;
+            border: 1px solid var(--border);
+            padding: 2rem;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .report-viewer h1, .report-viewer h2, .report-viewer h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .report-viewer h1 { font-size: 1.5rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        .report-viewer h2 { font-size: 1.25rem; }
+        .report-viewer h3 { font-size: 1.125rem; }
+
+        .report-viewer table {
+            margin: 1.5rem 0;
+        }
+
+        .report-viewer ul, .report-viewer ol {
+            margin-left: 2rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .report-viewer pre {
+            background: #020617;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .pulse-badge {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            border-radius: 9999px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Responsive Layouts */
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .content-grid { grid-template-columns: 1fr; }
+            .reports-split { grid-template-columns: 1fr; height: auto; }
+            .reports-list { height: 250px; }
+            .report-viewer { height: 500px; }
         }
 
         @media (max-width: 768px) {
             nav { display: none; }
-            main { margin-left: 0; padding: 1.5rem; }
+            main { margin-left: 0; padding: 1.5rem; width: 100%; }
             .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -308,12 +575,12 @@
     <nav>
         <div class="nav-logo">
             <i data-lucide="activity"></i>
-            ProBot
+            ProBot AI
         </div>
-        <a class="nav-link active"><i data-lucide="layout-dashboard"></i> Dashboard</a>
-        <a class="nav-link"><i data-lucide="bar-chart-2"></i> Trading</a>
-        <a class="nav-link" onclick="scrollToElement('positions-panel')"><i data-lucide="pie-chart"></i> Positions</a>
-        <a class="nav-link" onclick="scrollToElement('logs-panel')"><i data-lucide="terminal"></i> Logs</a>
+        <a class="nav-link active" onclick="showTab('dashboard')"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+        <a class="nav-link" onclick="showTab('chat')"><i data-lucide="message-square"></i> AI Research Chat</a>
+        <a class="nav-link" onclick="showTab('rag')"><i data-lucide="database"></i> Knowledge Base</a>
+        <a class="nav-link" onclick="showTab('reports')"><i data-lucide="file-text"></i> Reports Archive</a>
         
         <div style="margin-top: auto;">
             <div class="nav-link" onclick="logout()"><i data-lucide="log-out"></i> Logout</div>
@@ -323,109 +590,185 @@
     <main>
         <header>
             <div class="header-title">
-                <h1>System Overview</h1>
+                <h1 id="tab-title">System Overview</h1>
                 <p id="uptime-display">Bot offline</p>
             </div>
-            <div class="controls">
+            <div class="controls" id="header-controls">
                 <div id="status-container" class="status-badge status-stopped">
                     <span class="dot"></span>
                     <span id="status-text">DISCONNECTED</span>
                 </div>
+                <button id="btn-start" class="btn-primary" style="display:none" onclick="sendCommand('start')">
+                    <i data-lucide="play"></i> Start Bot
+                </button>
                 <button id="btn-pause" class="btn-outline" onclick="sendCommand('pause')">
                     <i data-lucide="pause-circle"></i> Pause Bot
                 </button>
                 <button id="btn-resume" class="btn-outline" style="display:none" onclick="sendCommand('resume')">
                     <i data-lucide="play-circle"></i> Resume
                 </button>
-                <button class="btn-danger" onclick="sendCommand('stop')">
+                <button id="btn-kill" class="btn-danger" onclick="sendCommand('stop')">
                     <i data-lucide="power"></i> Kill Process
                 </button>
             </div>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon"><i data-lucide="wallet"></i></div>
-                <div class="stat-label">Total Equity</div>
-                <div class="stat-value" id="val-equity">$0.00</div>
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i data-lucide="wallet"></i></div>
+                    <div class="stat-label">Total Equity</div>
+                    <div class="stat-value" id="val-equity">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: var(--success); background: rgba(16, 185, 129, 0.05);"><i data-lucide="zap"></i></div>
+                    <div class="stat-label">Available USDT</div>
+                    <div class="stat-value" id="val-free">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: var(--warning); background: rgba(245, 158, 11, 0.05);"><i data-lucide="refresh-cw"></i></div>
+                    <div class="stat-label">Last Sink</div>
+                    <div class="stat-value" style="font-size: 1rem;" id="val-last-update">--:--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color: var(--secondary); background: rgba(129, 140, 248, 0.05);"><i data-lucide="layers"></i></div>
+                    <div class="stat-label">Active Pairs</div>
+                    <div class="stat-value" id="val-pairs">0</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="color: var(--success); background: rgba(16, 185, 129, 0.1);"><i data-lucide="zap"></i></div>
-                <div class="stat-label">Available USDT</div>
-                <div class="stat-value" id="val-free">$0.00</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="color: var(--warning); background: rgba(245, 158, 11, 0.1);"><i data-lucide="refresh-cw"></i></div>
-                <div class="stat-label">Last Sink</div>
-                <div class="stat-value" style="font-size: 1rem;" id="val-last-update">--:--</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon" style="color: var(--secondary); background: rgba(129, 140, 248, 0.1);"><i data-lucide="layers"></i></div>
-                <div class="stat-label">Active Pairs</div>
-                <div class="stat-value" id="val-pairs">0</div>
+
+            <div class="content-grid">
+                <div>
+                    <div class="panel" id="positions-panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="briefcase"></i> Active Positions</h2>
+                        </div>
+                        <table id="positions-table">
+                            <thead>
+                                <tr>
+                                    <th>Asset</th>
+                                    <th>Amount</th>
+                                    <th>Current Price</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pos-body">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel" id="logs-panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="terminal"></i> Live Bot Logs</h2>
+                        </div>
+                        <div class="logs-container" id="logs-container">
+                            <!-- Logs injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="settings"></i> Pair Management</h2>
+                        </div>
+                        <div class="pair-list" id="pair-list">
+                            <!-- Tags injected here -->
+                        </div>
+                        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                            <input type="text" id="new-pair" placeholder="ETH/USDT" style="flex:1;">
+                            <button class="btn-primary" onclick="addPair()">Add</button>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="history"></i> Trade History</h2>
+                            <span style="font-size: 0.7rem; color: var(--text-muted)">(Last 50)</span>
+                        </div>
+                        <table style="font-size: 0.8rem;">
+                            <thead>
+                                <tr>
+                                    <th>Pair</th>
+                                    <th>Side</th>
+                                    <th>Price</th>
+                                    <th>PnL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body">
+                                <!-- History injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="content-grid">
-            <div class="panel" id="positions-panel">
-                <div class="panel-header">
-                    <h2 class="panel-title"><i data-lucide="briefcase"></i> Active Positions</h2>
+        <!-- TAB: AI CHAT -->
+        <div id="tab-chat" class="tab-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="sparkles" style="color: var(--accent);"></i>
+                        <span style="font-weight: 700;">Research agent Session</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Thread ID:</span>
+                        <input type="text" id="chat-thread-id" value="default_user" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: 120px;">
+                    </div>
                 </div>
-                <table id="positions-table">
-                    <thead>
-                        <tr>
-                            <th>Asset</th>
-                            <th>Amount</th>
-                            <th>Current Price</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pos-body">
-                        <!-- Data injected here -->
-                    </tbody>
-                </table>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-message agent">
+                        <div class="message-bubble">
+                            Hello! I am your LangChain-Powered Crypto Research Specialist. Ask me to run a multi-agent report on any cryptocurrency (e.g. <i>"Generate analysis for BTC on 1h timeframe"</i> or <i>"Perform sentiment assessment for ETH"</i>).
+                        </div>
+                        <span class="message-meta">AI Agent</span>
+                    </div>
+                </div>
+                <div class="chat-input-bar">
+                    <input type="text" id="chat-input" placeholder="Ask agent to run market, sentiment, news, or risk analysis..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="btn-primary" id="btn-send-chat" onclick="sendChatMessage()">
+                        <i data-lucide="send"></i> Send
+                    </button>
+                </div>
             </div>
+        </div>
 
+        <!-- TAB: KNOWLEDGE BASE -->
+        <div id="tab-rag" class="tab-content">
             <div class="panel">
                 <div class="panel-header">
-                    <h2 class="panel-title"><i data-lucide="settings"></i> Pair Management</h2>
+                    <h2 class="panel-title"><i data-lucide="upload-cloud"></i> Ingest Strategy Documents</h2>
                 </div>
-                <div class="pair-list" id="pair-list">
-                    <!-- Tags injected here -->
+                <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9375rem;">
+                    Upload new trading strategies, research papers, tokenomics PDFs, or news summaries directly into the agent's RAG knowledge base. The files will be chunked, parsed, and indexed in ChromaDB locally.
+                </p>
+                <div class="drag-card" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <i data-lucide="file-plus" style="width: 48px; height: 48px; color: var(--accent); margin-bottom: 1rem;"></i>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Drag & drop your files here, or click to browse</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Supports TXT, MD, JSON, and PDF documents</p>
+                    <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
                 </div>
-                <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
-                    <input type="text" id="new-pair" placeholder="ETH/USDT" style="flex:1; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 0.75rem; color: #fff; outline: none;">
-                    <button class="btn-primary" onclick="addPair()">Add</button>
-                </div>
-            </div>
-
-            <div class="panel" id="logs-panel">
-                <div class="panel-header">
-                    <h2 class="panel-title"><i data-lucide="terminal"></i> Live Bot Logs</h2>
-                </div>
-                <div class="logs-container" id="logs-container">
-                    <!-- Logs injected here -->
+                <div id="upload-status" style="margin-top: 1.5rem; display: none;" class="panel">
+                    <!-- Dynamic upload reports here -->
                 </div>
             </div>
+        </div>
 
-            <div class="panel">
-                <div class="panel-header" style="justify-content: flex-start; gap: 1rem;">
-                    <h2 class="panel-title"><i data-lucide="history"></i> Trade History</h2>
-                    <span style="font-size: 0.7rem; color: var(--text-muted)">(Last 50)</span>
+        <!-- TAB: REPORTS ARCHIVE -->
+        <div id="tab-reports" class="tab-content">
+            <div class="reports-split">
+                <div class="reports-list" id="reports-list">
+                    <!-- History reports list here -->
                 </div>
-                <table style="font-size: 0.8rem;">
-                    <thead>
-                        <tr>
-                            <th>Pair</th>
-                            <th>Side</th>
-                            <th>Price</th>
-                            <th>PnL</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-body">
-                        <!-- History injected here -->
-                    </tbody>
-                </table>
+                <div class="report-viewer" id="report-viewer">
+                    <div style="text-align: center; color: var(--text-muted); margin-top: 5rem;">
+                        <i data-lucide="file-text" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>Select a report from the list to preview</p>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -433,6 +776,41 @@
     <script>
         const API = '/api';
         let botStartTime = null;
+        let activeTab = 'dashboard';
+
+        function showTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`tab-${tabId}`).classList.remove('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            
+            // Set link active
+            const linkIdx = {'dashboard':0, 'chat':1, 'rag':2, 'reports':3}[tabId];
+            document.querySelectorAll('.nav-link')[linkIdx].classList.add('active');
+
+            // Change Header Title
+            const titleMap = {
+                'dashboard': 'System Overview',
+                'chat': 'AI Research Specialist',
+                'rag': 'Vector Store Knowledge Base',
+                'reports': 'Investment Report Archives'
+            };
+            document.getElementById('tab-title').innerText = titleMap[tabId];
+
+            // Hide/Show bot process control buttons depending on the active tab
+            document.getElementById('header-controls').style.display = tabId === 'dashboard' ? 'flex' : 'none';
+
+            if (tabId === 'reports') {
+                loadReportsArchive();
+            }
+        }
+
+        function logout() {
+            // Standard basic auth logout hack: send requests with invalid credentials or redirect
+            window.location.href = "logout.html"; 
+        }
 
         function updateUptime() {
             if (!botStartTime) return;
@@ -449,6 +827,7 @@
         }
 
         async function refresh() {
+            if (activeTab !== 'dashboard') return;
             try {
                 const res = await fetch(`${API}/status`);
                 if (res.status === 401) return;
@@ -458,12 +837,23 @@
                 const cont = document.getElementById('status-container');
                 const text = document.getElementById('status-text');
                 const status = data.status || 'STOPPED';
-                text.innerText = status;
+                
+                let displayStatus = status;
+                if (status === 'RUNNING') {
+                    displayStatus = 'ONLINE';
+                } else if (status === 'OFFLINE' || status === 'STOPPED') {
+                    displayStatus = 'OFFLINE';
+                }
+                
+                text.innerText = displayStatus;
                 cont.className = `status-badge status-${status.toLowerCase()}`;
 
                 // Update Control Btns
-                document.getElementById('btn-pause').style.display = status === 'PAUSED' ? 'none' : 'flex';
+                const isOffline = (status === 'OFFLINE' || status === 'STOPPED');
+                document.getElementById('btn-start').style.display = isOffline ? 'flex' : 'none';
+                document.getElementById('btn-pause').style.display = (status === 'PAUSED' || isOffline) ? 'none' : 'flex';
                 document.getElementById('btn-resume').style.display = status === 'PAUSED' ? 'flex' : 'none';
+                document.getElementById('btn-kill').style.display = isOffline ? 'none' : 'flex';
 
                 // Data
                 if (data.balance) {
@@ -472,7 +862,13 @@
                 }
                 
                 document.getElementById('val-last-update').innerText = data.last_update ? new Date(data.last_update).toLocaleTimeString() : '--:--';
-                botStartTime = data.start_time;
+                
+                if (status === 'OFFLINE' || status === 'STOPPED') {
+                    botStartTime = null;
+                    document.getElementById('uptime-display').innerText = 'Bot offline';
+                } else {
+                    botStartTime = data.start_time;
+                }
 
                 // Positions
                 const posBody = document.getElementById('pos-body');
@@ -493,6 +889,7 @@
         }
 
         async function fetchHistory() {
+            if (activeTab !== 'dashboard') return;
             try {
                 const res = await fetch(`${API}/trades`);
                 const trades = await res.json();
@@ -508,6 +905,7 @@
         }
 
         async function fetchPairs() {
+            if (activeTab !== 'dashboard') return;
             try {
                 const res = await fetch(`${API}/symbols`);
                 const symbols = await res.json();
@@ -523,6 +921,7 @@
         }
 
         async function fetchLogs() {
+            if (activeTab !== 'dashboard') return;
             try {
                 const res = await fetch(`${API}/logs`);
                 const logs = await res.json();
@@ -567,11 +966,258 @@
             fetchPairs();
         }
 
-        function scrollToElement(id) {
-            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        // --- AI Chat Tab ---
+        async function sendChatMessage() {
+            const inputEl = document.getElementById('chat-input');
+            const query = inputEl.value.trim();
+            if (!query) return;
+
+            inputEl.value = '';
+            const threadId = document.getElementById('chat-thread-id').value.trim() || 'default_user';
+
+            // Append User Message to Screen
+            const messagesContainer = document.getElementById('chat-messages');
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'chat-message user';
+            userMsgDiv.innerHTML = `
+                <div class="message-bubble">${escapeHtml(query)}</div>
+                <span class="message-meta">You (Thread: ${escapeHtml(threadId)})</span>
+            `;
+            messagesContainer.appendChild(userMsgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Show Loading state
+            const loadingMsgDiv = document.createElement('div');
+            loadingMsgDiv.className = 'chat-message agent';
+            loadingMsgDiv.id = 'chat-loading-bubble';
+            loadingMsgDiv.innerHTML = `
+                <div class="message-bubble" style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent);">
+                    <i data-lucide="loader" class="animate-spin" style="width: 16px; height: 16px;"></i>
+                    Agent is assembling specialized confluences, news and risk calculations...
+                </div>
+                <span class="message-meta">AI Agent</span>
+            `;
+            messagesContainer.appendChild(loadingMsgDiv);
+            lucide.createIcons();
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Toggle input bar lock
+            inputEl.disabled = true;
+            document.getElementById('btn-send-chat').disabled = true;
+
+            try {
+                const response = await fetch(`${API}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: query, thread_id: threadId })
+                });
+                
+                // Remove Loading bubble
+                document.getElementById('chat-loading-bubble').remove();
+
+                if (!response.ok) {
+                    const errorDetails = await response.json();
+                    throw new Error(errorDetails.detail || "Server error running analysis");
+                }
+
+                const data = await response.json();
+                
+                // Render Markdown in Bubble using marked
+                const agentMsgDiv = document.createElement('div');
+                agentMsgDiv.className = 'chat-message agent';
+                agentMsgDiv.innerHTML = `
+                    <div class="message-bubble">${marked.parse(data.response)}</div>
+                    <span class="message-meta">AI Agent (LangGraph Sequence Complete)</span>
+                `;
+                messagesContainer.appendChild(agentMsgDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            } catch (err) {
+                if (document.getElementById('chat-loading-bubble')) {
+                    document.getElementById('chat-loading-bubble').remove();
+                }
+                const errorMsgDiv = document.createElement('div');
+                errorMsgDiv.className = 'chat-message agent';
+                errorMsgDiv.innerHTML = `
+                    <div class="message-bubble" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05);">
+                        Error executing orchestrator sequence: ${escapeHtml(err.message)}
+                    </div>
+                    <span class="message-meta">System Error</span>
+                `;
+                messagesContainer.appendChild(errorMsgDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } finally {
+                inputEl.disabled = false;
+                document.getElementById('btn-send-chat').disabled = false;
+                inputEl.focus();
+            }
         }
 
-        // Init
+        // --- RAG Upload Tab ---
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            uploadFile(file);
+        }
+
+        async function uploadFile(file) {
+            const statusEl = document.getElementById('upload-status');
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent);">
+                    <i data-lucide="loader" class="animate-spin" style="width: 16px; height: 16px;"></i>
+                    Uploading and indexing '${escapeHtml(file.name)}'...
+                </div>
+            `;
+            lucide.createIcons();
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${API}/rag/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Server error uploading file");
+                }
+
+                const data = await res.json();
+                statusEl.innerHTML = `
+                    <div style="color: var(--success); display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                            <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+                            Upload Success!
+                        </div>
+                        <p style="font-size: 0.875rem; color: var(--text);">${escapeHtml(data.message)}</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Total Ingested Chunks: ${data.chunks_ingested}</p>
+                    </div>
+                `;
+            } catch (err) {
+                statusEl.innerHTML = `
+                    <div style="color: var(--danger); display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                        <i data-lucide="alert-triangle" style="width: 18px; height: 18px;"></i>
+                        Upload Failed: ${escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        // Setup Drag & Drop
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        });
+
+        // --- Reports Archive Tab ---
+        let currentReportsList = [];
+
+        async function loadReportsArchive() {
+            const listContainer = document.getElementById('reports-list');
+            listContainer.innerHTML = `
+                <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                    Loading report archive...
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`${API}/reports`);
+                currentReportsList = await res.json();
+
+                if (currentReportsList.length === 0) {
+                    listContainer.innerHTML = `
+                        <div style="color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.875rem;">
+                            No historical reports found.
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = currentReportsList.map((rep, idx) => {
+                    const formattedDate = new Date(rep.timestamp).toLocaleString();
+                    return `
+                        <div class="report-item" onclick="selectReport(${idx}, this)">
+                            <div class="report-item-title">${escapeHtml(rep.coin)} Report</div>
+                            <p style="font-size: 0.8rem; color: var(--text); margin-bottom: 0.5rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                "${escapeHtml(rep.query)}"
+                            </p>
+                            <div class="report-item-meta">
+                                <span>Timeframe: ${escapeHtml(rep.timeframe)}</span>
+                                <span>${formattedDate}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                listContainer.innerHTML = `
+                    <div style="color: var(--danger); text-align: center; padding: 2rem; font-size: 0.875rem;">
+                        Failed to load archive: ${escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function selectReport(index, element) {
+            document.querySelectorAll('.report-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+
+            const report = currentReportsList[index];
+            const viewer = document.getElementById('report-viewer');
+            
+            const formattedDate = new Date(report.timestamp).toLocaleString();
+
+            viewer.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                            <span style="font-size: 1.25rem; font-weight: 700; color: var(--accent);">${escapeHtml(report.coin)} / USDT</span>
+                            <span class="pulse-badge">${escapeHtml(report.timeframe)}</span>
+                        </div>
+                        <p style="font-size: 0.875rem; color: var(--text-muted);">Query: "${escapeHtml(report.query)}"</p>
+                    </div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">${formattedDate}</span>
+                </div>
+                <div>
+                    ${marked.parse(report.report)}
+                </div>
+            `;
+        }
+
+        // --- Helpers ---
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Init loops
         lucide.createIcons();
         refresh();
         fetchHistory();

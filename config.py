@@ -75,3 +75,6 @@ ATR_TP_MULTIPLIER  = float(os.getenv("ATR_TP_MULTIPLIER", "3.0"))  # 2:1 Reward:
 # ── Logging ───────────────────────────────────────
 LOG_FILE  = os.getenv("LOG_FILE", "bot.log")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# ── Dashboard Autostart ───────────────────────────
+AUTOSTART_DASHBOARD = os.getenv("AUTOSTART_DASHBOARD", "true").lower() == "true"
